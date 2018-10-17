@@ -1,4 +1,5 @@
-from tensorflow import keras
+# -*- coding: UTF-8 -*-
+from tensorflow.contrib import keras
 
 
 def createDenseNet(nb_classes, img_dim, depth=40, nb_dense_block=3, growth_rate=12, nb_filter=16, dropout_rate=None,
@@ -16,13 +17,14 @@ def createDenseNet(nb_classes, img_dim, depth=40, nb_dense_block=3, growth_rate=
     x = keras.layers.Convolution2D(nb_filter, (3, 3), kernel_initializer="he_uniform", padding="same",
                                    name="initial_conv2D",
                                    use_bias=False,
-                                   kernel_regularizer=keras.regularizers.l2(weight_decay))(model_input)
+                                   #kernel_regularizer=keras.regularizers.l2(weight_decay)
+)(model_input)
 
     x = keras.layers.BatchNormalization(axis=concat_axis, gamma_regularizer=keras.regularizers.l2(weight_decay),
                                         beta_regularizer=keras.regularizers.l2(weight_decay))(x)
 
     # Add dense blocks
-    for block_idx in range(nb_dense_block - 1):
+    for block_idx in xrange(nb_dense_block - 1):
         x, nb_filter = dense_block(x, nb_layers, nb_filter, growth_rate, dropout_rate=dropout_rate,
                                    weight_decay=weight_decay)
         # add transition_block
@@ -34,11 +36,16 @@ def createDenseNet(nb_classes, img_dim, depth=40, nb_dense_block=3, growth_rate=
 
     x = keras.layers.Activation('relu')(x)
     x = keras.layers.GlobalAveragePooling2D()(x)
-    x = keras.layers.Dense(nb_classes, activation='softmax', kernel_regularizer=keras.regularizers.l2(weight_decay),
-                           bias_regularizer=keras.regularizers.l2(weight_decay))(
-        x)
+  
+    #x = keras.layers.Flatten()(x)  # this converts our 3D feature maps to 1D feature vectors
+    #x = keras.layers.Dense(64, activation='relu')(x)
+    #x = keras.layers.Dropout(0.5)(x)
 
-    densenet = keras.Model(inputs=model_input, outputs=x)
+    x = keras.layers.Dense(nb_classes, activation='softmax', kernel_regularizer=keras.regularizers.l2(weight_decay),
+                           bias_regularizer=keras.regularizers.l2(weight_decay))(x)
+   # x = keras.layers.Activation('softmax')(x)
+
+    densenet = keras.models.Model(inputs=model_input, outputs=x)
 
     if verbose:
         print("DenseNet-%d-%d created." % (depth, growth_rate))
@@ -49,7 +56,8 @@ def createDenseNet(nb_classes, img_dim, depth=40, nb_dense_block=3, growth_rate=
 def conv_block(input, nb_filter, dropout_rate=None, weight_decay=1E-4):
     x = keras.layers.Activation('relu')(input)
     x = keras.layers.Convolution2D(nb_filter, (3, 3), kernel_initializer="he_uniform", padding="same", use_bias=False,
-                                   kernel_regularizer=keras.regularizers.l2(weight_decay))(x)
+                                   kernel_regularizer=keras.regularizers.l2(weight_decay)
+)(x)
     if dropout_rate is not None:
         x = keras.layers.Dropout(dropout_rate)(x)
     return x
@@ -60,7 +68,7 @@ def dense_block(x, nb_layers, nb_filter, growth_rate, dropout_rate=None, weight_
 
     feature_list = [x]
 
-    for i in range(nb_layers):
+    for i in xrange(nb_layers):
         x = conv_block(x, growth_rate, dropout_rate, weight_decay)
         feature_list.append(x)
         x = keras.layers.Concatenate(axis=concat_axis)(feature_list)
@@ -73,7 +81,8 @@ def transition_block(input, nb_filter, dropout_rate=None, weight_decay=1E-4):
     concat_axis = 1 if keras.backend.image_data_format() == "th" else -1
 
     x = keras.layers.Convolution2D(nb_filter, (1, 1), kernel_initializer="he_uniform", padding="same", use_bias=False,
-                                   kernel_regularizer=keras.regularizers.l2(weight_decay))(input)
+                                   kernel_regularizer=keras.regularizers.l2(weight_decay)
+)(input)
     if dropout_rate is not None:
         x = keras.layers.Dropout(dropout_rate)(x)
     x = keras.layers.AveragePooling2D((2, 2), strides=(2, 2))(x)
